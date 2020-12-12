@@ -1,0 +1,11 @@
+name: BESuperTrash
+version: ${project.version}
+main: me.mical.besupertrash.BESuperTrash
+api-version: 1.16
+authors: [ Mical ]
+commands:
+  besupertrash:
+    description: BESuperTrash Command
+    usage: /<command> help
+    permission: BESuperTrash.use
+    permission-message: You don't have permission to perform this command!
