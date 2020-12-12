@@ -73,6 +73,8 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
                             send(null, "成功加载数据文件 &f{0}", file.getName().replace(".yml", ""));
                         }
                     }
+                } else {
+                    send(null, "&c无法加载数据文件 &f{0} &7(&c数据文件不完整&7)", file.getName().replace(".yml", ""));
                 }
             }
             send(null, "已成功加载 &c{0} &7个数据文件", files.length);
