@@ -6,7 +6,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -26,7 +25,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
 
-public final class BESuperTrash extends JavaPlugin implements CommandExecutor, Listener {
+public final class BESuperTrash extends JavaPlugin implements Listener {
 
     private static List<Location> locs = new ArrayList<>();
     private static ItemStack stick;
@@ -57,6 +56,13 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
             locs = new ArrayList<>();
         }
         File folder = new File(getDataFolder(), "data");
+        if (!folder.exists()) {
+            if (folder.mkdirs()) {
+                send(null, "未找到 数据文件夹(data), 已自动生成.");
+            } else {
+                send(null, "&c尝试生成 数据文件夹(data) 失败.");
+            }
+        }
         File[] files = folder.listFiles(pathname -> pathname.getName().endsWith(".yml"));
         if (files != null && files.length != 0) {
             for (File file : files) {
@@ -120,55 +126,63 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
             pl = null;
         }
         if (command.getName().equalsIgnoreCase("besupertrash")) {
-            if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-                sender.sendMessage("/besupertrash create <name> 创建一个垃圾箱");
-                sender.sendMessage("/besupertrash reload 重载配置文件及数据文件");
-                sender.sendMessage("/besupertrash give 获取创建箱子要用的选择棒");
-            }
-            switch (args[0].toLowerCase()) {
-                case "reload":
-                    init();
-                    send(sender, "已成功初始化插件配置及数据文件.");
-                    break;
-                case "give":
-                    if (pl != null) {
-                        if (args.length >= 2) {
-                            try {
-                                int amount = Integer.parseInt(args[1]);
-                                giveStick(pl, amount);
-                            } catch (NumberFormatException e) {
-                                send(pl, "非法参数");
-                            }
-                        } else {
-                            send(pl, "参数不足");
-                        }
-                    } else {
-                        send(null, "你不是玩家");
-                    }
-                    break;
-                case "create":
-                    if (pl != null) {
-                        if (!dataMap.containsKey(pl)) {
-                            send(pl, "请先用选择棒选择箱子再创建.");
-                        } else {
-                            Block block = dataMap.get(pl).getBlock();
-                            if (block.getType().toString().contains("SHULKER_BOX") || block.getType().toString().equalsIgnoreCase("CHEST")) {
+            if (args.length == 0) {
+                sendHelp(sender);
+            } else {
+                switch (args[0].toLowerCase()) {
+                    case "help":
+                        sendHelp(sender);
+                        break;
+                    case "reload":
+                        init();
+                        send(sender, "已成功初始化插件配置及数据文件.");
+                        break;
+                    case "give":
+                        if (pl != null) {
+                            if (args.length >= 2) {
                                 try {
-                                    initliaze(args[1], block.getLocation(), pl);
-                                } catch (IOException e) {
-                                    send(pl, "无法创建垃圾箱, &c{0}&7, &c{1}" + e.getMessage(), e.getLocalizedMessage());
-                                    e.printStackTrace();
+                                    int amount = Integer.parseInt(args[1]);
+                                    giveStick(pl, amount);
+                                } catch (NumberFormatException e) {
+                                    send(pl, "非法参数");
                                 }
                             } else {
-                                send(pl, "你选中的不是容器方块");
+                                send(pl, "参数不足");
                             }
+                        } else {
+                            send(null, "你不是玩家");
                         }
-                    } else {
-                        send(null, "你不是玩家");
-                    }
+                        break;
+                    case "create":
+                        if (pl != null) {
+                            if (!dataMap.containsKey(pl)) {
+                                send(pl, "请先用选择棒选择箱子再创建.");
+                            } else {
+                                Block block = dataMap.get(pl).getBlock();
+                                if (block.getType().toString().contains("SHULKER_BOX") || block.getType().toString().equalsIgnoreCase("CHEST")) {
+                                    try {
+                                        initliaze(args[1], block.getLocation(), pl);
+                                    } catch (IOException e) {
+                                        send(pl, "无法创建垃圾箱, &c{0}&7, &c{1}" + e.getMessage(), e.getLocalizedMessage());
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    send(pl, "你选中的不是容器方块");
+                                }
+                            }
+                        } else {
+                            send(null, "你不是玩家");
+                        }
+                }
             }
         }
-        return false;
+        return true;
+    }
+
+    public static void sendHelp(CommandSender sender) {
+        send(sender, "/besupertrash create <name> 创建一个垃圾箱");
+        send(sender, "/besupertrash reload 重载配置文件及数据文件");
+        send(sender, "/besupertrash give 获取创建箱子要用的选择棒");
     }
 
     public static void giveStick(Player pl, int amount) {
@@ -195,7 +209,7 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
         if (Objects.nonNull(location)) {
             if (locs.contains(location)) {
                 if (debug) {
-                    send(null, "检测到玩家&c{0}&7打开了位于(&c{1}&7)的垃圾桶", event.getPlayer().getName(), location);
+                    send(null, "检测到玩家&c{0}&7打开了位于(&c{1}&7)的垃圾桶", event.getPlayer().getName(), formatLocation(location));
                 }
             }
         }
@@ -223,7 +237,7 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
                     }
                     locs.remove(location);
                     if (debug) {
-                        send(null, "检测到玩家&c{0}&7关闭了位于(&c{1}&7)的垃圾桶, 已自动重新生成.", event.getPlayer().getName(), location);
+                        send(null, "检测到玩家&c{0}&7关闭了位于(&c{1}&7)的垃圾桶, 已自动重新生成.", event.getPlayer().getName(), formatLocation(location));
                     }
                 }
             }
@@ -258,7 +272,7 @@ public final class BESuperTrash extends JavaPlugin implements CommandExecutor, L
                     block.setType(chestType);
                     locs.remove(location);
                     if (debug) {
-                        send(null, "检测到玩家&c{0}&7关闭了位于(&c{1}&7)的垃圾桶, 已自动重新生成.", player.getName(), location);
+                        send(null, "检测到玩家&c{0}&7关闭了位于(&c{1}&7)的垃圾桶, 已自动重新生成.", player.getName(), formatLocation(location));
                     }
                 }
             }
